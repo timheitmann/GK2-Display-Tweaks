@@ -94,63 +94,73 @@ internal static class UltrawidePatcher
         bool verbose)
     {
         Console.WriteLine();
-        Console.WriteLine($"Game assembly:");
+        Console.WriteLine("Game assembly:");
         Console.WriteLine(assemblyPath);
         Console.WriteLine();
 
-        using var assembly = AssemblyDefinition.ReadAssembly(
-            assemblyPath,
-            new ReaderParameters
+        uint methodRva;
+
+        using (var assembly = AssemblyDefinition.ReadAssembly(
+                assemblyPath,
+                new ReaderParameters
+                {
+                    ReadingMode = ReadingMode.Deferred,
+                    ReadSymbols = false
+                }))
+        {
+            TypeDefinition? resolutionConfig =
+                assembly.MainModule.Types.FirstOrDefault(
+                    type => type.Name == "ResolutionConfig");
+
+            if (resolutionConfig == null)
             {
-                ReadingMode = ReadingMode.Deferred,
-                ReadSymbols = false
-            });
+                Console.Error.WriteLine(
+                    "[ERROR] ResolutionConfig not found.");
+                return 1;
+            }
 
-        TypeDefinition? resolutionConfig =
-            assembly.MainModule.Types.FirstOrDefault(
-                type => type.Name == "ResolutionConfig");
+            MethodDefinition? isUltraWide =
+                resolutionConfig.Methods.FirstOrDefault(
+                    method =>
+                        method.Name == "IsUltraWide" &&
+                        method.IsStatic &&
+                        method.ReturnType.FullName ==
+                        "System.Boolean");
 
-        if (resolutionConfig == null)
-        {
-            Console.Error.WriteLine(
-                "[ERROR] ResolutionConfig not found.");
+            if (isUltraWide == null)
+            {
+                Console.Error.WriteLine(
+                    "[ERROR] ResolutionConfig.IsUltraWide not found.");
+                return 1;
+            }
 
-            return 1;
+            if (verbose)
+            {
+                Console.WriteLine(
+                    "[+] Found ResolutionConfig.IsUltraWide");
+
+                Console.WriteLine(
+                    $"[+] RVA: 0x{isUltraWide.RVA:X}");
+            }
+
+            if (!ValidateMethod(isUltraWide))
+            {
+                Console.Error.WriteLine(
+                    "[ERROR] Unexpected ResolutionConfig.IsUltraWide implementation.");
+
+                Console.Error.WriteLine(
+                    "No changes were made.");
+
+                return 1;
+            }
+
+            methodRva = (uint)isUltraWide.RVA;
         }
 
-        MethodDefinition? isUltraWide =
-            resolutionConfig.Methods.FirstOrDefault(
-                method =>
-                    method.Name == "IsUltraWide" &&
-                    method.IsStatic &&
-                    method.ReturnType.FullName ==
-                    "System.Boolean");
-
-        if (isUltraWide == null)
-        {
-            Console.Error.WriteLine(
-                "[ERROR] ResolutionConfig.IsUltraWide not found.");
-
-            return 1;
-        }
-
-        if (verbose)
-        {
-            Console.WriteLine(
-                $"[+] Found ResolutionConfig.IsUltraWide");
-
-            Console.WriteLine(
-                $"[+] RVA: 0x{isUltraWide.RVA:X}");
-        }
-
-        // We deliberately do not let Mono.Cecil rewrite the assembly.
-        // Some GK2 method bodies cannot currently be serialized
-        // correctly by Cecil. The RVA is only used to locate the
-        // existing method body for a minimal binary patch.
-
+        // Mono.Cecil has released the assembly at this point.
         uint fileOffset = RvaToFileOffset(
             assemblyPath,
-            (uint)isUltraWide.RVA);
+            methodRva);
 
         if (verbose)
         {
@@ -161,14 +171,12 @@ internal static class UltrawidePatcher
         return PatchMethodBody(
             assemblyPath,
             fileOffset,
-            isUltraWide,
             verbose);
     }
 
     private static int PatchMethodBody(
         string assemblyPath,
-        uint methodOffset,
-        MethodDefinition method,
+        uint fileOffset,
         bool verbose)
     {
         using var stream = new FileStream(
@@ -177,7 +185,7 @@ internal static class UltrawidePatcher
             FileAccess.ReadWrite,
             FileShare.Read);
 
-        stream.Position = methodOffset;
+        stream.Position = fileOffset;
 
         int header = stream.ReadByte();
 
@@ -234,8 +242,7 @@ internal static class UltrawidePatcher
             return 0;
         }
 
-        if (!ValidateMethod(method) ||
-            !IsExpectedOriginal(code))
+        if (!IsExpectedOriginal(code))
         {
             Console.Error.WriteLine();
             Console.Error.WriteLine(
@@ -280,7 +287,7 @@ internal static class UltrawidePatcher
 
         // Remaining bytes are 0x00 = nop.
 
-        stream.Position = methodOffset + 1;
+        stream.Position = fileOffset + 1;
 
         stream.Write(
             patchedCode,
