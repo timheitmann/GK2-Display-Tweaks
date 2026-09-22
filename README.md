@@ -40,8 +40,17 @@ A backup of the original assembly is automatically created before any changes ar
 
 Simply run:
 
+Linux:
+
 ```text
-gk2-ultrawide-patcher
+chmod +x GK2-Ultrawide-Fix-linux-x64
+./GK2-Ultrawide-Fix-linux-x64
+```
+
+Windows:
+
+```text
+GK2-Ultrawide-Fix-win-x64.exe
 ```
 
 The patcher searches for the Graveyard Keeper 2 Steam installation automatically.
@@ -55,13 +64,13 @@ You can also specify the Graveyard Keeper 2 installation directory manually:
 Linux:
 
 ```text
-./gk2-ultrawide-patcher "/path/to/steamapps/common/Graveyard Keeper 2"
+./GK2-Ultrawide-Fix-linux-x64 "/path/to/steamapps/common/Graveyard Keeper 2"
 ```
 
 Windows:
 
 ```text
-gk2-ultrawide-patcher.exe "C:\Program Files (x86)\Steam\steamapps\common\Graveyard Keeper 2"
+GK2-Ultrawide-Fix-win-x64.exe "C:\Program Files (x86)\Steam\steamapps\common\Graveyard Keeper 2"
 ```
 
 ## Restore Original Files
@@ -72,16 +81,32 @@ The patcher automatically creates:
 Assembly-CSharp.dll.ultrawide-backup
 ```
 
+Linux:
+
 To restore the original game assembly:
 
 ```text
-gk2-ultrawide-patcher --restore
+./GK2-Ultrawide-Fix-linux-x64 --restore
 ```
 
 A custom game directory can also be specified:
 
 ```text
-gk2-ultrawide-patcher --restore "/path/to/Graveyard Keeper 2"
+./GK2-Ultrawide-Fix-linux-x64 --restore "/path/to/Graveyard Keeper 2"
+```
+
+Windows:
+
+To restore the original game assembly:
+
+```text
+GK2-Ultrawide-Fix-win-x64.exe --restore
+```
+
+A custom game directory can also be specified:
+
+```text
+GK2-Ultrawide-Fix-win-x64.exe --restore "/path/to/Graveyard Keeper 2"
 ```
 
 ## Verbose Output
@@ -89,7 +114,7 @@ gk2-ultrawide-patcher --restore "/path/to/Graveyard Keeper 2"
 Technical information about Steam detection, method location, RVA and file offsets can be displayed with:
 
 ```text
-gk2-ultrawide-patcher --verbose
+./GK2-Ultrawide-Fix-linux-x64 --verbose
 ```
 
 ## Building From Source
