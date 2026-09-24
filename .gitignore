@@ -19,3 +19,9 @@ Thumbs.db
 # Local test files
 *.bak
 *.backup
+
+# Release build
+release/
+
+# Third-party release dependencies
+third-party/
